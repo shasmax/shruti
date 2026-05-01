@@ -1,0 +1,16 @@
+{
+  "meeting_id": "2026-04-30-vendor-ops-sync",
+  "started_at": "2026-04-30T14:00:00Z",
+  "duration_s": 2710,
+  "participants": [
+    {"name": "Maria Chen", "role": "ops"},
+    {"name": "Sam Patel", "role": "engineering"}
+  ],
+  "utterances": [
+    {"speaker": "Maria Chen", "ts": [10, 18], "text": "we need a vendor onboarding form with a W-9 upload"},
+    {"speaker": "Sam Patel", "ts": [22, 28], "text": "let's go with the existing approval flow for now"},
+    {"speaker": "Maria Chen", "ts": [40, 50], "text": "I'll send the legal team the W-9 template by Friday"},
+    {"speaker": "Sam Patel", "ts": [60, 65], "text": "we should add a tax_id field on the vendor table"},
+    {"speaker": "Sam Patel", "ts": [70, 78], "text": "what about the multi-currency case?"}
+  ]
+}

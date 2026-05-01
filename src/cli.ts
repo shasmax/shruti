@@ -8,8 +8,8 @@ const program = new Command();
 
 program
   .name("shruti")
-  .description("Meeting agent - turn transcripts into spec.json")
-  .version("0.1.0");
+  .description("Meeting agent: turn transcripts into spec.json")
+  .version("0.2.1");
 
 program
   .command("extract <transcript>")

@@ -1,7 +1,7 @@
 {
   "name": "shruti",
-  "version": "0.1.0",
-  "description": "Meeting agent - joins Zoom/Meet, records, diarizes, turns speech into spec.json for ERP•AI",
+  "version": "0.2.1",
+  "description": "Meeting agent: joins Zoom/Meet, records, diarizes, turns speech into spec.json for ERP•AI",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,6 +12,7 @@
     "dist",
     "README.md",
     "GOALS.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

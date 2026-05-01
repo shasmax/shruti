@@ -57,7 +57,7 @@ describe("classify", () => {
   it("more pattern hits → higher confidence", () => {
     const a = classify("we need a CSV report");
     const b = classify(
-      "we need a CSV report, and let's add a download button — we should have it",
+      "we need a CSV report, and let's add a download button - we should have it",
     );
     expect((b?.confidence ?? 0) > (a?.confidence ?? 0)).toBe(true);
   });

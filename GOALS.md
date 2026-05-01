@@ -27,15 +27,15 @@ posted to the thread.
 ## Architecture decisions
 - TypeScript for adapters + CLI (matches `neo`, `build-host`)
 - Python optional for diarization (whisper.cpp + pyannote)
-- Spec format is the public contract — versioned independently
+- Spec format is the public contract - versioned independently
 - Bot adapter is pluggable; ship Recall first (fastest path)
 
 ## Non-goals
-- Generic transcription tool — Otter, Granola, Fireflies do that
+- Generic transcription tool - Otter, Granola, Fireflies do that
 - Replacing the human PM (specs need review)
-- Audio-quality ML research — we use existing models
+- Audio-quality ML research - we use existing models
 
 ## Out of scope (for now)
-- Live in-meeting UX (preview-while-talking) — defer until v1
-- Multi-language meetings — English first
+- Live in-meeting UX (preview-while-talking) - defer until v1
+- Multi-language meetings - English first
 - Microsoft Teams integration

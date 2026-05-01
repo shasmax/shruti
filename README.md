@@ -23,7 +23,7 @@ vendor onboarding form" to a deployed preview URL before the meeting
 ends.
 
 > **The thesis.** The fastest specification language is speech.
-> Stakeholders don't write user stories — they say things in meetings.
+> Stakeholders don't write user stories - they say things in meetings.
 > The agent that turns *"add a vendor onboarding form with a W-9
 > upload"* into a working app, before the meeting ends, wins. The bot
 > is the easy part. The structured spec is the hard part.
@@ -49,13 +49,13 @@ The classifier and the mapper are where the value is.
 
 ## ✦ Public scope (this repo)
 
-- **Bot adapters** — Zoom Meeting SDK, Google Meet REST, Recall.ai fallback
-- **Transcript schema** — utterances with speaker, timestamps, captions
-- **Classifier** — utterance → `{decision, feature_request, action_item, question, schema_change}`
-- **Spec emitter** — structured JSON ready for downstream builders
-- **Reference CLI** — `shruti extract <transcript.json> > spec.json`
+- **Bot adapters** - Zoom Meeting SDK, Google Meet REST, Recall.ai fallback
+- **Transcript schema** - utterances with speaker, timestamps, captions
+- **Classifier** - utterance → `{decision, feature_request, action_item, question, schema_change}`
+- **Spec emitter** - structured JSON ready for downstream builders
+- **Reference CLI** - `shruti extract <transcript.json> > spec.json`
 
-The downstream — `spec.json → working ERP app` — lives in
+The downstream - `spec.json → working ERP app` - lives in
 [`erphq/erpai-builder-skills`](https://github.com/erphq/erpai-builder-skills)
 (private). This repo is the *meeting half*.
 
@@ -123,7 +123,7 @@ Every item carries:
 | **Google Meet REST** | Direct; no third-party | Meet-only; quota limits | v0.4 |
 | **MS Teams** | Direct | Teams-only; complex auth | post-v1 |
 
-Ship Recall first — it's the fastest way to a working demo. Direct
+Ship Recall first - it's the fastest way to a working demo. Direct
 adapters come once we have a paying customer who needs them.
 
 ## ✦ Classifier
@@ -140,9 +140,9 @@ Five classes:
 
 Two classifier backends ship out of the box:
 
-- **Rule-based (`classify`, `src/classify.ts`)** — fast, deterministic,
+- **Rule-based (`classify`, `src/classify.ts`)** - fast, deterministic,
   no API key required. Used as the default in `extract.ts`.
-- **LLM (`classifyLLM`, `src/classify_llm.ts`)** — Haiku via the
+- **LLM (`classifyLLM`, `src/classify_llm.ts`)** - Haiku via the
   Anthropic SDK. Pass any `ClassifierClient` (the SDK, a fake, or a
   test double); the function emits a strict JSON contract and parses
   the response back into the same `Classification` shape.
@@ -163,7 +163,7 @@ word `skip` when an utterance is filler / off-topic, in which case
 
 ## ✦ Privacy & consent
 
-Recording meetings is regulated. `shruti` does not bypass consent —
+Recording meetings is regulated. `shruti` does not bypass consent -
 every supported platform's bot identifies itself as a recording bot
 when joining. Recall.ai handles this by default; the direct adapters
 ship with announce-on-join enabled by default. Disable at your own
@@ -225,7 +225,7 @@ A: English first. Whisper supports multilingual; the classifier prompts
 do not. v1.x.
 
 **Q: Can I run this without the ERP•AI builder?**
-A: Yes — `shruti extract` produces `spec.json` standalone. Wire it to
+A: Yes - `shruti extract` produces `spec.json` standalone. Wire it to
 your own downstream.
 
 **Q: What about meetings with 50+ participants?**
@@ -238,23 +238,23 @@ versions. Pin a version.
 
 ## ✦ Non-goals
 
-- A general-purpose transcription tool — Otter, Granola, Fireflies do that
-- Replacing the human PM — specs need review
-- Audio-quality ML research — we use existing models
-- Live in-meeting summarization — the v1 demo writes after pauses, not
+- A general-purpose transcription tool - Otter, Granola, Fireflies do that
+- Replacing the human PM - specs need review
+- Audio-quality ML research - we use existing models
+- Live in-meeting summarization - the v1 demo writes after pauses, not
   during them
 
 ## ✦ Roadmap
 
-- [x] v0.0 — scaffold, schema design, pipeline mockup
-- [x] v0.1 — transcript schema + extract→spec.json CLI (offline) + rule classifier
-- [x] v0.1.1 — LLM classifier (Haiku) via Anthropic SDK with mock-friendly client interface
-- [x] v0.2 — Recall.ai adapter scaffold (`BotAdapter` interface · `createRecallAdapter` · status / transcript / lifecycle methods)
-- [x] v0.2.1 — polling orchestrator (`pollUntilDone`, `runMeeting`) with timeout / failure / cleanup semantics
-- [ ] v0.3 — Zoom Meeting SDK direct
-- [ ] v0.4 — Google Meet integration
-- [ ] v0.5 — diarization (whisper.cpp + pyannote); spec format frozen
-- [ ] v1.0 — wired to `erpai-builder-skills`, end-to-end demo
+- [x] v0.0 - scaffold, schema design, pipeline mockup
+- [x] v0.1 - transcript schema + extract→spec.json CLI (offline) + rule classifier
+- [x] v0.1.1 - LLM classifier (Haiku) via Anthropic SDK with mock-friendly client interface
+- [x] v0.2 - Recall.ai adapter scaffold (`BotAdapter` interface · `createRecallAdapter` · status / transcript / lifecycle methods)
+- [x] v0.2.1 - polling orchestrator (`pollUntilDone`, `runMeeting`) with timeout / failure / cleanup semantics
+- [ ] v0.3 - Zoom Meeting SDK direct
+- [ ] v0.4 - Google Meet integration
+- [ ] v0.5 - diarization (whisper.cpp + pyannote); spec format frozen
+- [ ] v1.0 - wired to `erpai-builder-skills`, end-to-end demo
 
 ## ✦ Topics
 
@@ -264,4 +264,4 @@ versions. Pin a version.
 
 ## ✦ License
 
-MIT — see [LICENSE](./LICENSE).
+MIT - see [LICENSE](./LICENSE).

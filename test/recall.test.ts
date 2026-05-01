@@ -203,7 +203,7 @@ describe("createRecallAdapter", () => {
 
   it("scheduleBot URL-encodes the bot id (defense in depth)", async () => {
     // We don't expose user-supplied ids in scheduleBot, but getBotStatus
-    // does — make sure encodeURIComponent is in the path.
+    // does - make sure encodeURIComponent is in the path.
     const { fetch, calls } = fakeFetch({
       "GET /api/v1/bot/abc%2Fdef/": () => ({
         body: { id: "abc/def", status_changes: [{ code: "ready" }] },

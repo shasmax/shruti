@@ -47,7 +47,7 @@ export interface BotAdapter {
   getBotStatus(botId: string): Promise<BotStatus>;
   /**
    * Fetch the post-call transcript. Resolves to shruti's canonical
-   * `Transcript` shape — adapters do the per-vendor field translation.
+   * `Transcript` shape - adapters do the per-vendor field translation.
    * Throws if the transcript isn't ready yet (status not in
    * {transcribing, done}).
    */

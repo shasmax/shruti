@@ -75,7 +75,7 @@ export interface Classification {
 /**
  * Rule-based classifier. Returns the kind whose patterns hit the most
  * times, or `null` if no rule matched. Confidence scales with the
- * number of pattern hits (deliberately low — v0.1 swaps in an LLM).
+ * number of pattern hits (deliberately low - v0.1 swaps in an LLM).
  */
 export function classify(text: string): Classification | null {
   let best: { rule: Rule; hits: number } | null = null;

@@ -4,11 +4,11 @@
  *
  * v0.2.1 adds two helpers:
  *
- *   - `pollUntilDone(adapter, botId, opts)` — polls `getBotStatus`
+ *   - `pollUntilDone(adapter, botId, opts)` - polls `getBotStatus`
  *     until the bot reaches `done`, then fetches the transcript.
  *     Throws `BotFailedError` on `failed` and `PollTimeoutError`
  *     after the configured timeout.
- *   - `runMeeting(adapter, opts)` — schedules a bot, polls until
+ *   - `runMeeting(adapter, opts)` - schedules a bot, polls until
  *     done, returns `{botId, transcript}`. On failure, makes a
  *     best-effort `endBot` cleanup before re-throwing.
  *
@@ -108,7 +108,7 @@ export interface RunMeetingResult {
  *
  * On any error (timeout, failure, transcript fetch error), the bot
  * is asked to leave the call (`endBot`) before the error is re-thrown.
- * `endBot` errors are swallowed — we don't want to mask the original
+ * `endBot` errors are swallowed - we don't want to mask the original
  * cause with a cleanup-error stack.
  */
 export async function runMeeting(

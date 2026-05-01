@@ -14,6 +14,18 @@ export type {
 } from "./classify_llm.js";
 export { createAnthropicClient } from "./anthropic.js";
 export type {
+  BotAdapter,
+  BotStatus,
+  ScheduleBotOptions,
+  ScheduleBotResult,
+} from "./bot.js";
+export {
+  createRecallAdapter,
+  mapRecallStatus,
+  RecallApiError,
+} from "./recall.js";
+export type { RecallAdapterConfig } from "./recall.js";
+export type {
   Participant,
   Spec,
   SpecItem,

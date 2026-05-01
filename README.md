@@ -22,11 +22,9 @@ feature requests / action items / schema changes, and emits a structured
 vendor onboarding form" to a deployed preview URL before the meeting
 ends.
 
-> **The thesis.** The fastest specification language is speech.
-> Stakeholders don't write user stories - they say things in meetings.
-> The agent that turns *"add a vendor onboarding form with a W-9
-> upload"* into a working app, before the meeting ends, wins. The bot
-> is the easy part. The structured spec is the hard part.
+## Why
+
+Stakeholders specify software by talking, not by writing user stories. The fastest path from "we need a vendor onboarding form with a W-9 upload" to a deployed preview URL is a system that listens to the conversation, classifies what was said into typed intents (decisions, feature requests, action items, schema changes), and hands a structured `spec.json` to a downstream builder. Joining a call, recording, and transcribing are commodity. The classifier and the mapper from utterance to builder skill call are where the value lives.
 
 ---
 
@@ -44,8 +42,7 @@ flowchart LR
   build --> PR[PR + preview URL]
 ```
 
-Six stages. The first three are commodity (lots of vendors do them).
-The classifier and the mapper are where the value is.
+Six stages, broken across the meeting half (this repo) and the builder half (`erpai-builder-skills`, private).
 
 ## ✦ Public scope (this repo)
 

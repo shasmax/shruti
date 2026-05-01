@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.env
+.env.*
+coverage/
+*.tsbuildinfo
+recordings/
+*.wav
+*.m4a
+*.mp4
+__pycache__/
+.venv/

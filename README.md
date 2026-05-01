@@ -249,7 +249,7 @@ versions. Pin a version.
 - [x] v0.0 — scaffold, schema design, pipeline mockup
 - [x] v0.1 — transcript schema + extract→spec.json CLI (offline) + rule classifier
 - [x] v0.1.1 — LLM classifier (Haiku) via Anthropic SDK with mock-friendly client interface
-- [ ] v0.2 — Recall.ai adapter (cross-platform shortcut)
+- [x] v0.2 — Recall.ai adapter scaffold (`BotAdapter` interface · `createRecallAdapter` · status / transcript / lifecycle methods)
 - [ ] v0.3 — Zoom Meeting SDK direct
 - [ ] v0.4 — Google Meet integration
 - [ ] v0.5 — diarization (whisper.cpp + pyannote); spec format frozen

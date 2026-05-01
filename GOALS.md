@@ -6,9 +6,18 @@ meeting; before the meeting ends, a preview URL with a working form is
 posted to the thread.
 
 ## v0 success criteria
-- Offline: transcript.json → spec.json works
-- Spec schema documented and stable
-- Classifier reaches ≥80% on a hand-labeled internal dataset
+- Offline: transcript.json → spec.json works ✅
+- Spec schema documented and stable ✅
+- Classifier reaches ≥80% on a hand-labeled internal dataset (rule
+  classifier hand-tested on the sample fixture; LLM classifier ships
+  in v0.1.1; eval against a labeled set is pending)
+
+## Architecture decisions
+- Two classifier backends share a `Classification` shape:
+  rule-based (fast, deterministic, no key) is the default; LLM (Haiku
+  via Anthropic SDK) opts in via `classifyLLM`. Keeps tests hermetic
+  and lets the LLM path get exercised in E2E without being on the
+  default path.
 
 ## v1 success criteria
 - End-to-end demo via Recall.ai

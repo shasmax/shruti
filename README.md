@@ -138,9 +138,28 @@ Five classes:
 | `schema_change` | "field for", "store the", "table for" | DB migration spec |
 | `question` | "?", "how would we", "what about" | Open question record |
 
-The classifier is a small (Haiku) prompt run per utterance.
-Confidence is the model's self-reported probability. Items below a
-threshold (default 0.7) are flagged for human review.
+Two classifier backends ship out of the box:
+
+- **Rule-based (`classify`, `src/classify.ts`)** — fast, deterministic,
+  no API key required. Used as the default in `extract.ts`.
+- **LLM (`classifyLLM`, `src/classify_llm.ts`)** — Haiku via the
+  Anthropic SDK. Pass any `ClassifierClient` (the SDK, a fake, or a
+  test double); the function emits a strict JSON contract and parses
+  the response back into the same `Classification` shape.
+
+```ts
+import { classifyLLM, createAnthropicClient } from "shruti";
+
+const client = createAnthropicClient();   // reads ANTHROPIC_API_KEY
+const c = await classifyLLM("we need a vendor onboarding form", client);
+// → { kind: "feature_request", intent: "add_form", confidence: 0.91 }
+```
+
+Confidence is the model's self-reported probability (clamped to
+`[0, 1]`). Items below a threshold (default 0.7) should be flagged
+for human review. The model is instructed to respond with the literal
+word `skip` when an utterance is filler / off-topic, in which case
+`classifyLLM` returns `null`.
 
 ## ✦ Privacy & consent
 
@@ -228,7 +247,8 @@ versions. Pin a version.
 ## ✦ Roadmap
 
 - [x] v0.0 — scaffold, schema design, pipeline mockup
-- [ ] v0.1 — transcript schema + extract→spec.json CLI (offline mode)
+- [x] v0.1 — transcript schema + extract→spec.json CLI (offline) + rule classifier
+- [x] v0.1.1 — LLM classifier (Haiku) via Anthropic SDK with mock-friendly client interface
 - [ ] v0.2 — Recall.ai adapter (cross-platform shortcut)
 - [ ] v0.3 — Zoom Meeting SDK direct
 - [ ] v0.4 — Google Meet integration

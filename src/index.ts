@@ -25,6 +25,17 @@ export {
   RecallApiError,
 } from "./recall.js";
 export type { RecallAdapterConfig } from "./recall.js";
+export {
+  pollUntilDone,
+  runMeeting,
+  PollTimeoutError,
+  BotFailedError,
+} from "./orchestrator.js";
+export type {
+  PollOptions,
+  RunMeetingOptions,
+  RunMeetingResult,
+} from "./orchestrator.js";
 export type {
   Participant,
   Spec,

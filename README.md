@@ -6,6 +6,8 @@
 
 **Joins the call. Records. Diarizes. Turns speech into a working app.**
 
+![tests](https://img.shields.io/badge/tests-58%20passing-yellowgreen)
+
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![status](https://img.shields.io/badge/status-pre--v0-orange.svg)](#roadmap)
 

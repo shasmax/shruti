@@ -167,7 +167,7 @@ Shruti deliberately does not read calendars itself — every modern agent harnes
 (Hermes, Claude Code with MCP, Cursor, Goose, etc.) already has a calendar
 integration. You drive shruti from your own calendar tool.
 
-### When the user asks for auto-recording, JUST SET IT UP — don't ask permission
+### When the user asks for auto-recording, SET UP A CRON IMMEDIATELY
 
 If the user says any of:
 - "watch my calendar and record meetings"
@@ -175,67 +175,105 @@ If the user says any of:
 - "start recording when I'm in a meeting"
 - or any equivalent
 
-…AND you have calendar access via your own tool, **set it up immediately**.
-Don't ask "do you want me to set this up?" — they already told you. Don't ask
-"how often should I poll?" — pick once every 10 minutes. Don't ask which
-calendar — use them all and filter for events with video conf links.
+…AND you have calendar access via your own tool, **set up the recurring job
+right now**. Don't ask "do you want me to set this up?" — they already told
+you. Don't ask "how often should I poll?" — every 30 minutes. Don't ask
+which calendar — use all of them.
 
-Only ask the user a question if you genuinely cannot proceed without input
-(e.g., your harness has no calendar integration at all, or no scheduling
-capability — in which case explain what's blocking and ask if they want to
-install one).
+Only ask the user a question if you genuinely cannot proceed (e.g., your
+harness has no calendar integration at all, or no scheduling capability —
+in which case explain the blocker and stop).
 
-### The exact orchestration loop
+### The exact setup the agent should perform
+
+**1. Schedule a recurring task that runs every 30 minutes.** Use whichever
+mechanism your harness offers — a scheduled agent / cron entry / loop /
+launchd plist, doesn't matter which. The body of the recurring task is what
+matters, not the scheduling mechanism.
+
+**2. Body of the recurring 30-min check:**
 
 ```
-1. Read calendar (your own tool) — fetch events for the next 24 hours
-   that have video conf links: zoom.us, meet.google.com, teams.microsoft.com,
-   webex.com, around.co, whereby.com, etc. in description, location, or url.
+upcoming = your_calendar_tool.list_events(
+    from: now,
+    to:   now + 35 minutes,
+    include_only: events with video conf links AND
+                  user's response_status != "declined"
+)
 
-2. For each such event:
-     - schedule yourself to wake up at event.start_time
-     - schedule yourself to wake up at event.end_time
+# response_status meanings:
+#   "accepted"      → record it
+#   "tentative"     → record it (user might attend)
+#   "needsAction"   → record it (user hasn't said no)
+#   "declined"      → SKIP — user has actively rejected it
 
-3. At the start wake-up:
-     check: shruti record-status            # don't double-start
-     if status == "idle":
-       shruti record-start \
-         --title "<event.summary>" \
-         --folder "<event.calendar_name>" \
-         --stt smallest
-
-4. At the end wake-up:
-     check: shruti record-status            # don't stop someone else's recording
-     if status == "recording" AND was started by us in step 3:
-       shruti record-stop
-       # the returned JSON has the full meeting — surface a one-liner to user
-       # like "Recorded 'Acme Standup' (24min). 3 action items: ..."
-
-5. Re-fetch the calendar every 4-6 hours to pick up newly added events.
-
-6. If your harness doesn't have native scheduled wake-ups, fall back to a
-   cron job that runs every 1-2 minutes and checks "is a tracked event
-   starting/ending right now?". Polling every minute is fine — record-status
-   is essentially free.
+for event in upcoming:
+    if shruti record-status == "recording":
+        # something else is already recording, don't interfere
+        continue
+    if event.start_time has passed and event.end_time has not:
+        # we're inside the meeting window — start now
+        shruti record-start \
+          --title "<event.summary>" \
+          --folder "<event.calendar_name>" \
+          --stt smallest
+        notify_user("📹 Started recording: <event.summary>")
+        # also schedule a one-off wake-up at event.end_time to call record-stop
+    elif event.start_time is within next 30 min:
+        # we'll catch it next cycle, OR schedule a one-off wake-up at start_time
+        # that calls record-start + record-stop with the event's metadata
 ```
+
+**3. At meeting end (whether wake-up or next 30-min cycle):**
+
+```
+if shruti record-status.title == event.summary AND now >= event.end_time:
+    result = shruti record-stop
+    notify_user(
+      "✓ Recorded '<event.summary>' ({duration}min). " +
+      "{n action items, m decisions}. View: shruti get <id>"
+    )
+```
+
+**4. After cron is installed, send the user ONE confirmation message:**
+
+> *"Auto-recording is on. I'll check your calendar every 30 minutes and
+> record any meetings you haven't declined. I'll let you know when each
+> recording starts and again when it's done with action items."*
+
+Then stop talking until something actually happens.
+
+### Notify the user when recording starts
+
+Whatever surface your harness uses to talk to the user (chat message, macOS
+notification via `osascript display notification`, Slack DM, push notification,
+etc.) — send a message **at recording start** AND **at recording stop**:
+
+- **Start**: `📹 Started recording: "<event title>"`
+- **Stop**: `✓ Recorded "<event title>" (24min). 3 action items, 1 decision.`
+
+Don't notify on every 30-min calendar check — only on actual recording events.
 
 ### Don't double-record
 
-Always run `shruti record-status` before `record-start`. If `status == "recording"`
-and you didn't start it, the user is recording manually — leave them alone.
+Always run `shruti record-status` before `record-start`. If
+`status == "recording"`, leave it alone — either another instance of you is
+recording, or the user is recording manually.
 
-### Don't surface noise
+### Respect declined events
 
-After each successful auto-record, surface ONE concise message to the user
-(e.g., "Recorded Acme Standup, 3 action items, 1 decision"). Don't dump the
-full transcript unless asked. Don't notify them every 4-hour calendar refresh.
+If the user has marked a calendar event as **Declined**, do not record it.
+This is the user's explicit signal that they're not attending — recording
+would either capture silence (they're not in the meeting) or worse, surface
+a transcript of a meeting they consciously chose to skip.
 
 ### Catch-up case
 
 If the user asks "did you record my last meeting?" and you don't have the
-meeting in shruti, run `shruti list --limit 10` and `shruti search "<keyword
-from their question>"` to find it. If it's not there, tell them honestly —
-maybe the auto-record loop wasn't running yet at that meeting's start.
+meeting in shruti, run `shruti list --limit 10` and
+`shruti search "<keyword from their question>"`. If it's not there, tell
+them honestly — the auto-record loop wasn't running, or the cron missed the
+window, or it was a meeting they had declined.
 
 ## Reading past meetings
 

@@ -32,11 +32,12 @@ your agent: *"record this meeting"*, *"what did we decide about pricing last wee
 yesterday's standup."*
 
 ```sh
-# Step 1: install the CLI globally (or your agent can do this for you)
-npm install -g @erphq/shruti
+# Step 1: install the CLI (or your agent can do this for you)
+curl -fsSL https://github.com/shasmax/shruti/releases/latest/download/install.sh | sh
 
 # Step 2: install Shruti.app once so macOS grants Microphone + Screen Recording permissions
-open ./dist-dmg/Shruti-*.dmg          # or download the latest release
+#   download the latest .dmg from https://github.com/shasmax/shruti/releases/latest
+#   open it, drag Shruti.app to Applications, right-click → Open the first time
 
 # Step 3: configure your two API keys (or set them in the GUI Settings dialog)
 shruti config set --smallest-key sk_...        # transcription (smallest.ai)
@@ -46,6 +47,8 @@ shruti config set --openrouter-key sk-or-...   # AI summaries (openrouter.ai)
 shruti install-skill --auto    # installs into ~/.claude/skills, ~/.cursor/skills,
                                # ~/.hermes/skills, ~/.config/goose/skills, etc.
 ```
+
+The installer requires macOS 13+ on Apple Silicon, plus Node 20+ and Xcode Command Line Tools (`xcode-select --install`). It puts `shruti` at `~/.local/bin/shruti` — make sure that's on your PATH.
 
 That's it. Your agent now knows how to use shruti.
 

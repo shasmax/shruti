@@ -24,10 +24,11 @@ shruti --version          # confirms the CLI is installed
 shruti record-status      # → {"status":"idle"} or {"status":"recording", ...}
 ```
 
-If `shruti` is not on the user's PATH, install it:
+If `shruti` is not on the user's PATH, install it with the one-line installer:
 ```sh
-npm install -g @erphq/shruti
+curl -fsSL https://github.com/shasmax/shruti/releases/latest/download/install.sh | sh
 ```
+Requires macOS 13+ on Apple Silicon, with Node 20+ and Xcode Command Line Tools (`xcode-select --install`). The installer puts `shruti` at `~/.local/bin/shruti` — make sure that's on the user's PATH.
 
 If a recording is already in progress (`"status":"recording"`), don't start a new one — ask the user whether to keep the current one going or stop it first.
 

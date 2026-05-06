@@ -60,27 +60,18 @@ tccutil reset ScreenCapture
 
 Tell the user to expect these prompts up front so they don't dismiss them.
 
-### 2. Pick an STT (speech-to-text) backend
+### 2. Set up the Smallest AI key (required for transcription)
 
-One of these has to be set up before `record-stop` will produce a transcript.
+`record-stop` calls Smallest AI to transcribe both audio channels. Without
+the key, the recording will save WAV files but no transcript.
 
-**Option A — Smallest AI (cloud, fast, better punctuation, paid):**
 ```sh
 shruti config set --smallest-key sk_<their-key-from-smallest.ai>
 ```
-Then start recordings with `--stt smallest` (or set as default).
 
-**Option B — whisper.cpp (local, free, slower):**
-```sh
-shruti install-model tiny.en        # ~77 MB, one-time download
-# or for higher quality (slower, ~1.5 GB):
-shruti install-model medium.en
-```
-Then start recordings with `--stt whisper`.
-
-If neither is set up and the user runs `record-stop`, it will fail with a
-clear error saying which key/model is missing. Don't pre-emptively install
-both — ask the user which they prefer.
+If the user doesn't have a key yet, point them at https://smallest.ai —
+they sign up, copy the key from the dashboard, paste it back to you, then
+you run the `config set` above. Don't try to record before this is done.
 
 ### 3. Audio output device caveat (system audio capture)
 
@@ -122,11 +113,11 @@ If a recording is already in progress (`"status":"recording"`), don't start a ne
 
 ### Start a recording
 ```sh
-shruti record-start [--stt smallest|whisper] [--language en]
+shruti record-start [--language en]
 # → {"recording_id":"rec-...","pid":12345,"work_dir":"/tmp/...","started_at":"..."}
 ```
 
-Defaults to `--stt smallest` (cloud, requires `SMALLEST_API_KEY`). Use `--stt whisper` for fully-local STT (no API key, slower, requires `shruti install-model tiny.en` once).
+Transcription uses Smallest AI (configured in step 2 of First-time setup).
 
 ### Check whether something is recording
 ```sh
@@ -318,7 +309,7 @@ shruti config set --openrouter-key <key>
 shruti config set --openrouter-model anthropic/claude-haiku-4.5
 ```
 
-The keys are read by `shruti record-stop` (for STT) and `shruti summarize` (for the LLM call). Without them, recording still works but transcription falls back to local whisper.cpp and summaries are skipped.
+The keys are read by `shruti record-stop` (for STT) and `shruti summarize` (for the LLM call). Without the Smallest key, recordings save WAV files but produce no transcript. Without the OpenRouter key, transcripts save but summaries are skipped.
 
 When the user doesn't have keys set yet:
 1. Ask them to grab one from https://smallest.ai (transcription) and https://openrouter.ai (summaries)
@@ -329,7 +320,7 @@ When the user doesn't have keys set yet:
 If the user has a WAV file from elsewhere (Voice Memos, Zoom export, podcast):
 
 ```sh
-shruti transcribe /absolute/path/to/file.wav [--stt smallest|whisper] [--language en]
+shruti transcribe /absolute/path/to/file.wav [--language en]
 # → transcript JSON (does NOT save a meeting)
 ```
 
@@ -355,7 +346,7 @@ You can read the meeting JSONs directly with `cat`, but prefer the CLI commands 
 | `a recording is already in progress` | Concurrent record-start while one is live | Run `shruti record-stop` first |
 | `shruti-capture binary not found` | Native sidecar missing — usually means user didn't install Shruti.app | Tell them to install the app once |
 | `OpenRouter API key required` (during summarize) | No key in settings or env | Run `shruti config set --openrouter-key <key>` |
-| `Smallest auth error` (during stop) | No SMALLEST_API_KEY for cloud STT | Either set the key or use `--stt whisper` |
+| `Smallest auth error` (during stop) | No Smallest AI key set | Run `shruti config set --smallest-key sk_...` then retry the recording |
 | `system.wav is 44 bytes` (header only) | User on Bluetooth output → SCStream sees no audio | Tell them to switch output to MacBook speakers |
 
 ## Trigger-phrase examples (use to decide when to act)

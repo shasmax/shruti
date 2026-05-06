@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Meeting agent: joins Zoom/Meet, records, diarizes, turns speech into spec.json for ERP•AI",
   "type": "module",
   "main": "./dist-app/app/main/main.js",

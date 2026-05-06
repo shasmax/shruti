@@ -237,50 +237,63 @@ program
 
 // ----- Configuration: API keys and prefs (shared with the GUI app) ------------
 
-program
-  .command("config")
-  .description("Get or set settings (API keys, model, etc.)")
-  .option("--get", "print current settings as JSON")
-  .option("--set <key=value...>", "set one or more keys (e.g. --set smallestApiKey=sk_... openrouterApiKey=sk-or-...)", collectKv, {})
-  .option("--smallest-key <key>", "shortcut for --set smallestApiKey=...")
-  .option("--openrouter-key <key>", "shortcut for --set openrouterApiKey=...")
-  .option("--openrouter-model <slug>", "shortcut for --set openrouterModel=...")
-  .option("--clear-keys", "remove both API keys from settings")
-  .action(async (opts: {
-    get?: boolean;
-    set: Record<string, string>;
-    smallestKey?: string;
-    openrouterKey?: string;
-    openrouterModel?: string;
-    clearKeys?: boolean;
-  }) => {
-    if (opts.get || (
-      !Object.keys(opts.set).length &&
-      !opts.smallestKey && !opts.openrouterKey && !opts.openrouterModel && !opts.clearKeys
-    )) {
-      const s = await loadSettings();
-      // Mask the secret part of the keys when printing
-      const masked = {
-        ...s,
-        smallestApiKey: maskKey(s.smallestApiKey),
-        openrouterApiKey: maskKey(s.openrouterApiKey),
-        path: settingsPath(),
-      };
-      process.stdout.write(JSON.stringify(masked, null, 2) + "\n");
-      return;
-    }
+interface ConfigSetOpts {
+  smallestKey?: string;
+  openrouterKey?: string;
+  openrouterModel?: string;
+  clearKeys?: boolean;
+  set?: Record<string, string>;
+}
 
-    const patch: Record<string, string | undefined> = { ...opts.set };
-    if (opts.smallestKey) patch.smallestApiKey = opts.smallestKey;
-    if (opts.openrouterKey) patch.openrouterApiKey = opts.openrouterKey;
-    if (opts.openrouterModel) patch.openrouterModel = opts.openrouterModel;
-    if (opts.clearKeys) {
-      patch.smallestApiKey = undefined;
-      patch.openrouterApiKey = undefined;
-    }
-    await saveSettings(patch);
-    process.stdout.write(JSON.stringify({ ok: true, path: settingsPath() }) + "\n");
-  });
+async function printConfig() {
+  const s = await loadSettings();
+  const masked = {
+    ...s,
+    smallestApiKey: maskKey(s.smallestApiKey),
+    openrouterApiKey: maskKey(s.openrouterApiKey),
+    path: settingsPath(),
+  };
+  process.stdout.write(JSON.stringify(masked, null, 2) + "\n");
+}
+
+async function applyConfigPatch(opts: ConfigSetOpts) {
+  const patch: Record<string, string | undefined> = { ...(opts.set ?? {}) };
+  if (opts.smallestKey) patch.smallestApiKey = opts.smallestKey;
+  if (opts.openrouterKey) patch.openrouterApiKey = opts.openrouterKey;
+  if (opts.openrouterModel) patch.openrouterModel = opts.openrouterModel;
+  if (opts.clearKeys) {
+    patch.smallestApiKey = undefined;
+    patch.openrouterApiKey = undefined;
+  }
+  if (Object.keys(patch).length === 0) {
+    process.stderr.write(
+      "nothing to set. Pass --smallest-key, --openrouter-key, --openrouter-model, --set k=v, or --clear-keys.\n",
+    );
+    process.exit(2);
+  }
+  await saveSettings(patch);
+  process.stdout.write(JSON.stringify({ ok: true, path: settingsPath() }) + "\n");
+}
+
+const config = program
+  .command("config")
+  .description("Read or modify settings (API keys, model, etc.). Default action prints current settings.")
+  .action(printConfig);
+
+config
+  .command("get")
+  .description("Print current settings as JSON")
+  .action(printConfig);
+
+config
+  .command("set")
+  .description("Save one or more settings, e.g. `config set --smallest-key sk_...`")
+  .option("--smallest-key <key>", "Smallest AI STT API key")
+  .option("--openrouter-key <key>", "OpenRouter LLM API key for summaries")
+  .option("--openrouter-model <slug>", "default OpenRouter model slug")
+  .option("--set <key=value...>", "set arbitrary settings", collectKv, {})
+  .option("--clear-keys", "remove both API keys")
+  .action(applyConfigPatch);
 
 function collectKv(value: string, previous: Record<string, string>) {
   const eq = value.indexOf("=");
@@ -516,10 +529,16 @@ program
     const startedMs = Date.parse(s.startedAt);
     const durationS = Math.max(1, Math.round((Date.now() - startedMs) / 1000));
 
-    // Transcribe both channels
+    // Transcribe both channels — load API key from settings first since
+    // record-stop runs in a fresh process and createSmallestAdapter only
+    // checks cfg.apiKey + SMALLEST_API_KEY env var.
+    const settingsForStt = await loadSettings();
     const stt: SttAdapter =
       s.stt === "smallest"
-        ? createSmallestAdapter({ language: s.language })
+        ? createSmallestAdapter({
+            language: s.language,
+            apiKey: process.env.SMALLEST_API_KEY ?? settingsForStt.smallestApiKey,
+          })
         : createWhisperCppAdapter({
             modelPath: resolveModelArg(s.whisperModel),
             language: s.language,

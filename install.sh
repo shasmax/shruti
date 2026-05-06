@@ -50,13 +50,23 @@ need_cmd curl
 need_cmd tar
 need_cmd node "install Node 20+ from https://nodejs.org or via 'brew install node'"
 need_cmd npm
-need_cmd swiftc "install Xcode Command Line Tools: 'xcode-select --install'"
 
 NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
 if [ "${NODE_MAJOR}" -lt 20 ]; then
   die "shruti requires Node 20+. You have $(node -v)."
 fi
-ok "node $(node -v), npm $(npm -v), swift $(swift -version 2>&1 | head -1 | awk '{print $4}')"
+
+# Swift compiler is OPTIONAL — we prefer to download the prebuilt sidecar
+# binary from the GitHub release. If that fails (e.g. user is offline or on
+# a tag that doesn't ship one) we fall back to swiftc, which requires Xcode
+# Command Line Tools.
+HAS_SWIFTC=0
+if command -v swiftc >/dev/null 2>&1; then
+  HAS_SWIFTC=1
+  ok "node $(node -v), npm $(npm -v), swift $(swift -version 2>&1 | head -1 | awk '{print $4}')"
+else
+  ok "node $(node -v), npm $(npm -v) (swiftc not found — will use prebuilt sidecar)"
+fi
 
 # ---- paths -----------------------------------------------------------------
 INSTALL_DIR="${SHRUTI_INSTALL_DIR:-$HOME/.local/share/shruti}"
@@ -109,15 +119,40 @@ note "pruning dev dependencies..."
 npm prune --omit=dev --silent --no-audit --no-fund 2>&1 | tail -3 || true
 ok "pruned"
 
-note "compiling Swift audio sidecar..."
-swiftc -O \
-  native/macos/ShrutiCapture.swift \
-  -o native/macos/shruti-capture \
-  -framework AVFoundation \
-  -framework ScreenCaptureKit \
-  -framework CoreMedia 2>&1 | tail -3 || die "Swift compile failed"
-chmod +x native/macos/shruti-capture
-ok "Swift sidecar compiled"
+note "fetching native audio sidecar..."
+SIDECAR_URL="https://github.com/$REPO/releases/download/$TAG/shruti-capture"
+SIDECAR_DEST="native/macos/shruti-capture"
+mkdir -p native/macos
+if curl -fsSL "$SIDECAR_URL" -o "$SIDECAR_DEST" 2>/dev/null && [ -s "$SIDECAR_DEST" ]; then
+  chmod +x "$SIDECAR_DEST"
+  # Sanity-check it's the right architecture
+  if file "$SIDECAR_DEST" | grep -q "Mach-O.*arm64"; then
+    ok "downloaded prebuilt sidecar (Mach-O arm64)"
+  else
+    rm -f "$SIDECAR_DEST"
+    die "downloaded sidecar is not a valid arm64 binary"
+  fi
+else
+  rm -f "$SIDECAR_DEST"
+  if [ "$HAS_SWIFTC" -eq 1 ]; then
+    note "prebuilt unavailable, compiling from source..."
+    swiftc -O \
+      native/macos/ShrutiCapture.swift \
+      -o "$SIDECAR_DEST" \
+      -framework AVFoundation \
+      -framework ScreenCaptureKit \
+      -framework CoreMedia 2>&1 | tail -3 || die "Swift compile failed"
+    chmod +x "$SIDECAR_DEST"
+    ok "compiled sidecar from source"
+  else
+    die "couldn't download prebuilt sidecar and swiftc is not installed.
+
+    Install Xcode Command Line Tools to enable source compilation:
+        xcode-select --install
+    Or install the desktop app instead — it ships with the sidecar:
+        https://github.com/$REPO/releases/latest"
+  fi
+fi
 
 # ---- link CLI on PATH ------------------------------------------------------
 chmod +x "$INSTALL_DIR/dist/cli.js"

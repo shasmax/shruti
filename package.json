@@ -1,15 +1,21 @@
 {
-  "name": "shruti",
-  "version": "0.2.1",
+  "name": "@erphq/shruti",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.3.0",
   "description": "Meeting agent: joins Zoom/Meet, records, diarizes, turns speech into spec.json for ERP•AI",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist-app/app/main/main.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "shruti": "./dist/cli.js"
   },
   "files": [
     "dist",
+    "skill",
+    "native/macos/ShrutiCapture.swift",
+    "native/macos/shruti-capture",
     "README.md",
     "GOALS.md",
     "CHANGELOG.md",
@@ -17,6 +23,11 @@
   ],
   "scripts": {
     "build": "tsc -p . && chmod +x dist/cli.js",
+    "build:native": "swiftc -O native/macos/ShrutiCapture.swift -o native/macos/shruti-capture -framework AVFoundation -framework ScreenCaptureKit -framework CoreMedia",
+    "build:app": "tsc -p app/tsconfig.json && mkdir -p dist-app/app/renderer && cp app/renderer/*.html app/renderer/*.css app/renderer/*.js dist-app/app/renderer/",
+    "build:all": "npm run build && npm run build:native && npm run build:app",
+    "app:dev": "npm run build:app && electron .",
+    "app:dmg": "npm run build:all && electron-builder --mac dmg",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "lint": "tsc -p . --noEmit",
@@ -28,6 +39,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
     "tsx": "^4.19.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
@@ -53,5 +66,51 @@
   },
   "bugs": {
     "url": "https://github.com/erphq/shruti/issues"
+  },
+  "build": {
+    "appId": "com.shruti.app",
+    "productName": "Shruti",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist-dmg"
+    },
+    "files": [
+      "dist-app/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "native/macos/shruti-capture",
+        "to": "shruti-capture"
+      },
+      {
+        "from": "app/renderer",
+        "to": "renderer"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Shruti records your microphone to transcribe meetings.",
+        "NSScreenCaptureUsageDescription": "Shruti captures system audio to transcribe other participants in meetings.",
+        "LSMinimumSystemVersion": "13.0"
+      }
+    },
+    "dmg": {
+      "title": "Shruti ${version}",
+      "writeUpdateInfo": false
+    },
+    "asar": true
   }
 }

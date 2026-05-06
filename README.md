@@ -24,6 +24,66 @@ feature requests / action items / schema changes, and emits a structured
 vendor onboarding form" to a deployed preview URL before the meeting
 ends.
 
+## Use shruti with any AI agent (Claude Code, Cursor, Hermes, Goose, …)
+
+Shruti ships an **agent skill** — a single `SKILL.md` file that teaches any agent-skills-aware
+assistant how to record, transcribe, and search your meetings. After installing, just talk to
+your agent: *"record this meeting"*, *"what did we decide about pricing last week?"*, *"summarize
+yesterday's standup."*
+
+```sh
+# Step 1: install the CLI globally (or your agent can do this for you)
+npm install -g @erphq/shruti
+
+# Step 2: install Shruti.app once so macOS grants Microphone + Screen Recording permissions
+open ./dist-dmg/Shruti-*.dmg          # or download the latest release
+
+# Step 3: configure your two API keys (or set them in the GUI Settings dialog)
+shruti config set --smallest-key sk_...        # transcription (smallest.ai)
+shruti config set --openrouter-key sk-or-...   # AI summaries (openrouter.ai)
+
+# Step 4: drop the skill into your agent's skills folder
+shruti install-skill --auto    # installs into ~/.claude/skills, ~/.cursor/skills,
+                               # ~/.hermes/skills, ~/.config/goose/skills, etc.
+```
+
+That's it. Your agent now knows how to use shruti.
+
+```
+You:   record this meeting
+Agent: → calls `shruti record-start`. Recording.
+
+[meeting happens]
+
+You:   stop and tell me the action items
+Agent: → calls `shruti record-stop`, parses the summary, replies:
+       "Three things came out of it:
+        • Sam to send the W-9 by Friday
+        • Maria will draft the vendor onboarding form
+        • Pricing decision deferred to Tuesday's sync"
+
+You:   what did Maria commit to last Tuesday?
+Agent: → calls `shruti search "Maria"`, picks the right meeting,
+         calls `shruti get <id>`, reads the action items, replies.
+```
+
+### What the agent can do
+
+| Command | What it does |
+|---|---|
+| `shruti record-start` / `record-stop` / `record-status` | start/stop/check a meeting recording (mic + system audio) |
+| `shruti list [--folder X]` | list saved meetings as JSON |
+| `shruti get <id>` | full meeting JSON (transcript + summary + notes) |
+| `shruti search "<query>"` | substring search across all transcripts |
+| `shruti summarize <id> [--model ...]` | re-run AI summary with any OpenRouter model |
+| `shruti update <id> --notes "..."` | edit a meeting's notes / folder / title |
+| `shruti transcribe <file.wav>` | one-shot WAV → transcript (no save) |
+
+All commands return JSON on stdout. The skill at [`skill/SKILL.md`](./skill/SKILL.md)
+documents trigger phrases, error patterns, and prerequisites for the agent.
+
+---
+
 ## Why
 
 Stakeholders specify software by talking, not by writing user stories. The fastest path from "we need a vendor onboarding form with a W-9 upload" to a deployed preview URL is a system that listens to the conversation, classifies what was said into typed intents (decisions, feature requests, action items, schema changes), and hands a structured `spec.json` to a downstream builder. Joining a call, recording, and transcribing are commodity. The classifier and the mapper from utterance to builder skill call are where the value lives.

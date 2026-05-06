@@ -30,6 +30,14 @@ export interface RecordingState {
   whisperModel?: string;
   /** Language hint. */
   language: string;
+  /**
+   * Optional metadata baked in at start time. `record-stop` uses these
+   * unless its own --title / --folder flags override. Lets a scheduler
+   * (cron, agent, etc.) set everything at start and call record-stop
+   * with no args.
+   */
+  title?: string;
+  folder?: string | null;
 }
 
 export function statePath(): string {

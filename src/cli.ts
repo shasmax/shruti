@@ -415,12 +415,16 @@ program
   .option("--language <lang>", "ISO language code or 'auto'/'multi'", "en")
   .option("--me <label>", "label for mic-channel speaker", "Me")
   .option("--them <label>", "label for system-channel speaker", "Other")
+  .option("--title <title>", "meeting title (used by record-stop unless overridden)")
+  .option("--folder <name>", "folder to file the meeting under (use \"\" for none)")
   .action(async (opts: {
     stt: string;
     model: string;
     language: string;
     me: string;
     them: string;
+    title?: string;
+    folder?: string;
   }) => {
     const existing = await readRecordingState();
     if (existing && isPidAlive(existing.pid)) {
@@ -454,6 +458,8 @@ program
       stt,
       whisperModel: opts.model,
       language: opts.language,
+      title: opts.title,
+      folder: opts.folder === "" ? null : opts.folder,
     });
 
     const recordingId = `rec-${Date.now()}`;
@@ -578,16 +584,23 @@ program
       }
     }
 
+    // Resolve title + folder: explicit --flag wins over what was set
+    // at record-start, which wins over defaults.
+    const resolvedTitle = opts.title ?? s.title ?? defaultTitle(transcript);
+    const resolvedFolder = opts.folder !== undefined
+      ? (opts.folder === "" ? null : opts.folder)
+      : (s.folder ?? null);
+
     const meeting: Meeting = {
       id: transcript.meeting_id,
-      title: opts.title ?? defaultTitle(transcript),
+      title: resolvedTitle,
       created_at: s.startedAt,
       duration_s: durationS,
       transcript,
       spec,
       summary,
       notes: "",
-      folder: opts.folder ?? null,
+      folder: resolvedFolder,
     };
     await saveMeeting(meeting);
 

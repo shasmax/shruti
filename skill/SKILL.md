@@ -143,6 +143,51 @@ shruti record-stop [--title "Acme Q3 sync"] [--folder "Acme Q3"] [--no-summary]
 
 This command takes seconds-to-a-minute (STT runs both channels, then OpenRouter writes the summary). It is synchronous — wait for it to return.
 
+### Pre-fill title + folder at start time (for scheduled recordings)
+
+For agent-driven auto-recording from calendar events, you usually know the title
+and folder *at the time you start recording* (from the calendar event metadata),
+but you stop hours later from a different orchestration step. Pass them at start
+and `record-stop` will pick them up automatically:
+
+```sh
+# Cleanest pattern: tag the recording at start, stop with no args
+shruti record-start --title "Acme Standup" --folder "Acme" --stt smallest
+# … meeting happens …
+shruti record-stop                 # uses stored title + folder
+```
+
+Either side can override: an explicit `--title` on `record-stop` wins over what
+was set at `record-start`, which wins over the auto-generated default
+("Meeting · Tue, May 5 04:29 PM").
+
+## Auto-recording from calendar (orchestration pattern for agents)
+
+Shruti deliberately does not read calendars itself — every modern agent harness
+(Hermes, Claude Code with MCP, Cursor, Goose, etc.) already has a calendar
+integration. You drive shruti from your own calendar tool:
+
+```
+1. Use your calendar tool to find upcoming events with video conf links
+   (Zoom, Meet, Teams, Webex URLs in description or location).
+
+2. At the meeting start time:
+     shruti record-start --title "<event.title>" --folder "<calendar.name>" --stt smallest
+
+3. At the meeting end time (or when you detect the meeting app has quit):
+     shruti record-stop
+
+4. The returned meeting JSON has the full transcript + AI summary.
+   Surface action items / decisions back to the user.
+```
+
+If your runtime supports scheduled wake-ups, schedule yourself for the start
+and end times. If not, poll `record-status` periodically and check whether
+the calendar event is current.
+
+If a recording is already in progress when a meeting starts, do NOT call
+`record-start` again — call `record-status` first to check.
+
 ## Reading past meetings
 
 ```sh

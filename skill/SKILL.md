@@ -60,35 +60,19 @@ tccutil reset ScreenCapture
 
 Tell the user to expect these prompts up front so they don't dismiss them.
 
-### 2. Pick an STT (speech-to-text) backend
+### 2. Set up the Smallest AI key (required for transcription)
 
-`record-stop` won't produce a transcript until ONE of these is set up.
-Ask the user which they prefer; default to Smallest AI if they have no
-preference (better quality + punctuation, simpler to set up).
+`record-stop` calls Smallest AI to transcribe both audio channels. Without
+the key, the recording will save WAV files but no transcript will be
+generated.
 
-**Option A — Smallest AI (cloud, recommended, ~$0.40/hr):**
 ```sh
 shruti config set --smallest-key sk_<their-key-from-smallest.ai>
 ```
-Sign up at https://smallest.ai → dashboard → copy key.
-Recording defaults to `--stt smallest`, no extra flags needed.
 
-**Option B — whisper.cpp (local, free, near-Granola quality):**
-```sh
-brew install whisper-cpp                        # one-time, if not already
-shruti install-model medium.en                  # ~1.5 GB, ~5 min download
-```
-
-Then start recordings with `--stt whisper`. The `medium.en` model is the
-recommended sweet spot — near-cloud quality, runs at ~2x realtime on
-M-series Macs, fully offline. Smaller alternatives (`tiny.en`, `base.en`,
-`small.en`) exist but quality drops noticeably; `large-v3-turbo` (1.6 GB)
-is also good if the user wants the absolute best at slight speed cost.
-
-**You can set up both** — the user can switch per-recording with `--stt`,
-or set a default with `shruti config set --default-stt smallest|whisper`.
-If neither is set up and the user runs `record-stop`, it will fail with a
-clear error saying which key/model is missing.
+If the user doesn't have a key yet, point them at https://smallest.ai —
+they sign up, copy the key from the dashboard, paste it back to you, then
+you run the `config set` above. Don't try to record before this is done.
 
 ### 3. Audio output device caveat (system audio capture)
 
@@ -130,13 +114,11 @@ If a recording is already in progress (`"status":"recording"`), don't start a ne
 
 ### Start a recording
 ```sh
-shruti record-start [--stt smallest|whisper] [--language en]
+shruti record-start [--language en]
 # → {"recording_id":"rec-...","pid":12345,"work_dir":"/tmp/...","started_at":"..."}
 ```
 
-Transcription uses whichever STT was configured in step 2 of First-time
-setup. Default is `--stt smallest`. Pass `--stt whisper` to use the local
-whisper.cpp model instead (requires `shruti install-model medium.en`).
+Transcription uses Smallest AI (configured in step 2 of First-time setup).
 
 ### Check whether something is recording
 ```sh
@@ -339,7 +321,7 @@ When the user doesn't have keys set yet:
 If the user has a WAV file from elsewhere (Voice Memos, Zoom export, podcast):
 
 ```sh
-shruti transcribe /absolute/path/to/file.wav [--stt smallest|whisper] [--language en]
+shruti transcribe /absolute/path/to/file.wav [--language en]
 # → transcript JSON (does NOT save a meeting)
 ```
 
@@ -365,9 +347,7 @@ You can read the meeting JSONs directly with `cat`, but prefer the CLI commands 
 | `a recording is already in progress` | Concurrent record-start while one is live | Run `shruti record-stop` first |
 | `shruti-capture binary not found` | Native sidecar missing — usually means user didn't install Shruti.app | Tell them to install the app once |
 | `OpenRouter API key required` (during summarize) | No key in settings or env | Run `shruti config set --openrouter-key <key>` |
-| `Smallest auth error` (during stop) | No Smallest AI key set, but `--stt smallest` was used | Either run `shruti config set --smallest-key sk_...` then retry, or use `--stt whisper` instead (requires `shruti install-model medium.en` first) |
-| `whisper.cpp model not found` | `--stt whisper` used but no model downloaded | Run `shruti install-model medium.en` (~1.5 GB, near-cloud quality). Smaller models exist (`tiny.en`, `base.en`, `small.en`) but quality drops fast. |
-| `whisper-cli not found` | `--stt whisper` used but binary not on PATH | Run `brew install whisper-cpp` |
+| `Smallest auth error` (during stop) | No Smallest AI key set | Run `shruti config set --smallest-key sk_...` then retry the recording |
 | `system.wav is 44 bytes` (header only) | User on Bluetooth output → SCStream sees no audio | Tell them to switch output to MacBook speakers |
 
 ## Trigger-phrase examples (use to decide when to act)

@@ -28,7 +28,93 @@ If `shruti` is not on the user's PATH, install it with the one-line installer:
 ```sh
 curl -fsSL https://github.com/shasmax/shruti/releases/latest/download/install.sh | sh
 ```
-Requires macOS 13+ on Apple Silicon, with Node 20+ and Xcode Command Line Tools (`xcode-select --install`). The installer puts `shruti` at `~/.local/bin/shruti` — make sure that's on the user's PATH.
+Requires macOS 13+ on Apple Silicon and Node 20+. The installer puts `shruti` at
+`~/.local/bin/shruti` — make sure that's on the user's PATH.
+
+## First-time setup (do this BEFORE the user's first recording)
+
+There are three things a brand-new user must do once. Walk them through these
+proactively the first time they ask to record — don't wait for failures.
+
+### 1. macOS permissions (most common gotcha)
+
+The very first `shruti record-start` will trigger two macOS permission prompts,
+attached to **whichever terminal app spawned the agent** (Terminal.app, iTerm,
+Warp, or the host of the agent itself). The user must:
+
+- **Allow Microphone access** when prompted
+- **Allow Screen & System Audio Recording** when prompted (this captures the
+  "Other" channel — everyone else in the call). For Screen Recording, macOS
+  also requires the user to **quit and re-launch the terminal** for the
+  permission to take effect
+
+If the user denies or misses the prompts, the recording will silently capture
+silence (mic.wav / system.wav will be tiny). To recover:
+
+```sh
+# Reset and re-prompt
+tccutil reset Microphone
+tccutil reset ScreenCapture
+# Then re-launch the terminal and record again
+```
+
+Tell the user to expect these prompts up front so they don't dismiss them.
+
+### 2. Pick an STT (speech-to-text) backend
+
+One of these has to be set up before `record-stop` will produce a transcript.
+
+**Option A — Smallest AI (cloud, fast, better punctuation, paid):**
+```sh
+shruti config set --smallest-key sk_<their-key-from-smallest.ai>
+```
+Then start recordings with `--stt smallest` (or set as default).
+
+**Option B — whisper.cpp (local, free, slower):**
+```sh
+shruti install-model tiny.en        # ~77 MB, one-time download
+# or for higher quality (slower, ~1.5 GB):
+shruti install-model medium.en
+```
+Then start recordings with `--stt whisper`.
+
+If neither is set up and the user runs `record-stop`, it will fail with a
+clear error saying which key/model is missing. Don't pre-emptively install
+both — ask the user which they prefer.
+
+### 3. Audio output device caveat (system audio capture)
+
+System audio capture only works when the user's **output device is the built-in
+speakers or a wired connection**. Bluetooth output (AirPods, Bluetooth speakers)
+silently bypasses ScreenCaptureKit — the user will see the recording succeed,
+but `system.wav` will be empty (44 bytes, header only) and the "Other" channel
+of the transcript will be blank.
+
+If the user wants to record a meeting where they want to *hear* the others, the
+pragmatic setup is:
+
+- **Wired headphones** plugged into the laptop → mic captures only their voice,
+  system audio still routes through ScreenCaptureKit. **Best setup.**
+- **Built-in speakers** → both channels capture, but the mic will pick up the
+  speaker output and the "Me" channel will duplicate "Other".
+- **AirPods (Bluetooth)** → "Other" channel is silent. Don't use this for
+  meeting recording.
+
+If the user reports an empty "Other" transcript, this is almost certainly why.
+
+### 4. (Optional) AI summaries
+
+To get auto-summaries on every `record-stop`, set the OpenRouter key:
+```sh
+shruti config set --openrouter-key sk-or-<their-key-from-openrouter.ai>
+```
+Pick a default model (or pass `--model` per-call):
+```sh
+shruti config set --openrouter-model anthropic/claude-haiku-4.5
+```
+
+Without this, `record-stop` still works but skips the summary step. The user
+can backfill summaries later with `shruti summarize <id>`.
 
 If a recording is already in progress (`"status":"recording"`), don't start a new one — ask the user whether to keep the current one going or stop it first.
 

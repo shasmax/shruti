@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { extractSpec } from "./extract.js";
-import { createWhisperCppAdapter, createSmallestAdapter } from "./stt/index.js";
+import { createWhisperCppAdapter, createSmallestAdapter, createGroqAdapter } from "./stt/index.js";
 import type { SttAdapter } from "./stt/index.js";
 import { installModel, isValidSize, modelPath, type ModelSize } from "./install_model.js";
 import { Recorder } from "./recorder.js";
@@ -51,7 +51,7 @@ program
 program
   .command("transcribe <audio>")
   .description("Transcribe a WAV file and write transcript JSON to stdout")
-  .option("--stt <provider>", "STT provider: whisper or smallest", "whisper")
+  .option("--stt <provider>", "STT provider: smallest, groq, or whisper", "smallest")
   .option("--model <name>", "whisper-only: model size or path")
   .option("--language <lang>", "ISO language code or 'auto'/'multi'", "en")
   .option("--stereo", "treat input as stereo: left=Me, right=Other (whisper only)")
@@ -63,7 +63,7 @@ program
     stereo?: boolean;
     meetingId: string;
   }) => {
-    const adapter = buildStt(opts);
+    const adapter = await buildStt(opts);
     if (opts.stereo && opts.stt !== "whisper") {
       throw new Error("--stereo is only supported with --stt whisper");
     }
@@ -82,7 +82,7 @@ program
 program
   .command("record")
   .description("Record system audio + mic on macOS, transcribe, write transcript JSON to stdout")
-  .option("--stt <provider>", "STT provider: whisper or smallest", "whisper")
+  .option("--stt <provider>", "STT provider: smallest, groq, or whisper", "smallest")
   .option("--model <name>", "whisper-only: model size or path", "tiny.en")
   .option("--language <lang>", "ISO language code or 'auto'/'multi'", "en")
   .option("--me <label>", "label for mic-channel speaker", "Me")
@@ -98,7 +98,7 @@ program
     keep?: boolean;
     output?: string;
   }) => {
-    const stt = buildStt(opts);
+    const stt = await buildStt(opts);
     const recorder = new Recorder({
       stt,
       meLabel: opts.me,
@@ -239,6 +239,7 @@ program
 
 interface ConfigSetOpts {
   smallestKey?: string;
+  groqKey?: string;
   openrouterKey?: string;
   openrouterModel?: string;
   clearKeys?: boolean;
@@ -250,6 +251,7 @@ async function printConfig() {
   const masked = {
     ...s,
     smallestApiKey: maskKey(s.smallestApiKey),
+    groqApiKey: maskKey(s.groqApiKey),
     openrouterApiKey: maskKey(s.openrouterApiKey),
     path: settingsPath(),
   };
@@ -259,15 +261,17 @@ async function printConfig() {
 async function applyConfigPatch(opts: ConfigSetOpts) {
   const patch: Record<string, string | undefined> = { ...(opts.set ?? {}) };
   if (opts.smallestKey) patch.smallestApiKey = opts.smallestKey;
+  if (opts.groqKey) patch.groqApiKey = opts.groqKey;
   if (opts.openrouterKey) patch.openrouterApiKey = opts.openrouterKey;
   if (opts.openrouterModel) patch.openrouterModel = opts.openrouterModel;
   if (opts.clearKeys) {
     patch.smallestApiKey = undefined;
+    patch.groqApiKey = undefined;
     patch.openrouterApiKey = undefined;
   }
   if (Object.keys(patch).length === 0) {
     process.stderr.write(
-      "nothing to set. Pass --smallest-key, --openrouter-key, --openrouter-model, --set k=v, or --clear-keys.\n",
+      "nothing to set. Pass --smallest-key, --groq-key, --openrouter-key, --openrouter-model, --set k=v, or --clear-keys.\n",
     );
     process.exit(2);
   }
@@ -289,10 +293,11 @@ config
   .command("set")
   .description("Save one or more settings, e.g. `config set --smallest-key sk_...`")
   .option("--smallest-key <key>", "Smallest AI STT API key")
+  .option("--groq-key <key>", "Groq STT API key (for cloud Whisper via Groq)")
   .option("--openrouter-key <key>", "OpenRouter LLM API key for summaries")
   .option("--openrouter-model <slug>", "default OpenRouter model slug")
   .option("--set <key=value...>", "set arbitrary settings", collectKv, {})
-  .option("--clear-keys", "remove both API keys")
+  .option("--clear-keys", "remove all API keys")
   .action(applyConfigPatch);
 
 function collectKv(value: string, previous: Record<string, string>) {
@@ -410,7 +415,7 @@ async function copyDir(src: string, dest: string): Promise<void> {
 program
   .command("record-start")
   .description("Spawn the recorder in the background. Emits {recording_id, pid, work_dir}.")
-  .option("--stt <provider>", "STT provider used at stop time: whisper or smallest", "smallest")
+  .option("--stt <provider>", "STT provider used at stop time: smallest, groq, or whisper", "smallest")
   .option("--model <name>", "whisper-only: model size or path", "tiny.en")
   .option("--language <lang>", "ISO language code or 'auto'/'multi'", "en")
   .option("--me <label>", "label for mic-channel speaker", "Me")
@@ -448,7 +453,11 @@ program
       process.exit(1);
     }
 
-    const stt = opts.stt === "smallest" || opts.stt === "smallest-ai" ? "smallest" : "whisper";
+    const sttRaw = (opts.stt ?? "smallest").toLowerCase();
+    const stt: "smallest" | "whisper" | "groq" =
+      sttRaw === "groq" || sttRaw === "whisper-groq" ? "groq" :
+      sttRaw === "whisper" || sttRaw === "whisper-cpp" || sttRaw === "whisper.cpp" ? "whisper" :
+      "smallest";
     await writeRecordingState({
       pid: child.pid,
       workDir,
@@ -535,20 +544,26 @@ program
     const startedMs = Date.parse(s.startedAt);
     const durationS = Math.max(1, Math.round((Date.now() - startedMs) / 1000));
 
-    // Transcribe both channels — load API key from settings first since
-    // record-stop runs in a fresh process and createSmallestAdapter only
-    // checks cfg.apiKey + SMALLEST_API_KEY env var.
+    // Transcribe both channels. Load settings here because record-stop runs
+    // in a fresh process and the cloud adapters only check cfg.apiKey + env.
     const settingsForStt = await loadSettings();
-    const stt: SttAdapter =
-      s.stt === "smallest"
-        ? createSmallestAdapter({
-            language: s.language,
-            apiKey: process.env.SMALLEST_API_KEY ?? settingsForStt.smallestApiKey,
-          })
-        : createWhisperCppAdapter({
-            modelPath: resolveModelArg(s.whisperModel),
-            language: s.language,
-          });
+    let stt: SttAdapter;
+    if (s.stt === "smallest") {
+      stt = createSmallestAdapter({
+        language: s.language,
+        apiKey: process.env.SMALLEST_API_KEY ?? settingsForStt.smallestApiKey,
+      });
+    } else if (s.stt === "groq") {
+      stt = createGroqAdapter({
+        language: s.language,
+        apiKey: process.env.GROQ_API_KEY ?? settingsForStt.groqApiKey,
+      });
+    } else {
+      stt = createWhisperCppAdapter({
+        modelPath: resolveModelArg(s.whisperModel),
+        language: s.language,
+      });
+    }
 
     const micWav = join(s.workDir, "mic.wav");
     const sysWav = join(s.workDir, "system.wav");
@@ -681,14 +696,26 @@ function resolveModelArg(arg: string | undefined): string | undefined {
   return arg;
 }
 
-function buildStt(opts: {
+async function buildStt(opts: {
   stt?: string;
   model?: string;
   language: string;
-}): SttAdapter {
-  const provider = (opts.stt ?? "whisper").toLowerCase();
+}): Promise<SttAdapter> {
+  const provider = (opts.stt ?? "smallest").toLowerCase();
+  // Load settings once so we can pass keys explicitly to adapters that don't
+  // know to read settings.json on their own.
+  const settings = await loadSettings();
   if (provider === "smallest" || provider === "smallest-ai") {
-    return createSmallestAdapter({ language: opts.language });
+    return createSmallestAdapter({
+      language: opts.language,
+      apiKey: process.env.SMALLEST_API_KEY ?? settings.smallestApiKey,
+    });
+  }
+  if (provider === "groq" || provider === "whisper-groq") {
+    return createGroqAdapter({
+      language: opts.language,
+      apiKey: process.env.GROQ_API_KEY ?? settings.groqApiKey,
+    });
   }
   if (provider === "whisper" || provider === "whisper-cpp" || provider === "whisper.cpp") {
     return createWhisperCppAdapter({
@@ -696,7 +723,7 @@ function buildStt(opts: {
       language: opts.language,
     });
   }
-  throw new Error(`unknown --stt provider: ${provider}. valid: whisper, smallest`);
+  throw new Error(`unknown --stt provider: ${provider}. valid: smallest, groq, whisper`);
 }
 
 program.parseAsync(process.argv).catch((err: unknown) => {

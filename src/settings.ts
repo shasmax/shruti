@@ -14,6 +14,7 @@ import { dataDir } from "./storage.js";
 
 export interface Settings {
   smallestApiKey?: string;
+  groqApiKey?: string;
   openrouterApiKey?: string;
   openrouterModel?: string;
   meLabel?: string;

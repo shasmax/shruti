@@ -25,7 +25,7 @@ export interface RecordingState {
   meLabel: string;
   themLabel: string;
   /** STT provider chosen for the eventual transcribe step. */
-  stt: "smallest" | "whisper";
+  stt: "smallest" | "whisper" | "groq";
   /** Optional model override (whisper only). */
   whisperModel?: string;
   /** Language hint. */

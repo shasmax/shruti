@@ -60,19 +60,31 @@ tccutil reset ScreenCapture
 
 Tell the user to expect these prompts up front so they don't dismiss them.
 
-### 2. Set up the Smallest AI key (required for transcription)
+### 2. Pick an STT (speech-to-text) backend
 
-`record-stop` calls Smallest AI to transcribe both audio channels. Without
-the key, the recording will save WAV files but no transcript will be
-generated.
+`record-stop` won't produce a transcript until ONE of these is configured.
+Ask the user which they prefer; default to Smallest AI if no preference
+(simplest sign-up). Both are cloud — no local install required.
 
+**Option A — Smallest AI (recommended default, ~$0.40/hr):**
 ```sh
-shruti config set --smallest-key sk_<their-key-from-smallest.ai>
+shruti config set --smallest-key sk_<key-from-smallest.ai>
 ```
+Sign up at https://smallest.ai → dashboard → copy key. Recording defaults
+to `--stt smallest`.
 
-If the user doesn't have a key yet, point them at https://smallest.ai —
-they sign up, copy the key from the dashboard, paste it back to you, then
-you run the `config set` above. Don't try to record before this is done.
+**Option B — Groq (cloud Whisper, ~$0.04/hr — 10× cheaper, faster):**
+```sh
+shruti config set --groq-key gsk_<key-from-console.groq.com>
+```
+Sign up at https://console.groq.com → API Keys → copy key. Use with
+`shruti record-start --stt groq`. Same Whisper model OpenAI uses, runs on
+Groq's hardware so it's typically 5-10× faster than OpenAI's API. Generous
+free tier available.
+
+If neither is set up and the user runs `record-stop`, it fails with a
+clear error saying which key is missing. Set up at least one before any
+recording.
 
 ### 3. Audio output device caveat (system audio capture)
 
@@ -114,11 +126,12 @@ If a recording is already in progress (`"status":"recording"`), don't start a ne
 
 ### Start a recording
 ```sh
-shruti record-start [--language en]
+shruti record-start [--stt smallest|groq] [--language en]
 # → {"recording_id":"rec-...","pid":12345,"work_dir":"/tmp/...","started_at":"..."}
 ```
 
-Transcription uses Smallest AI (configured in step 2 of First-time setup).
+Default `--stt smallest`. Pass `--stt groq` to use Groq Whisper (cheaper,
+faster, requires Groq key from step 2).
 
 ### Check whether something is recording
 ```sh
@@ -347,7 +360,8 @@ You can read the meeting JSONs directly with `cat`, but prefer the CLI commands 
 | `a recording is already in progress` | Concurrent record-start while one is live | Run `shruti record-stop` first |
 | `shruti-capture binary not found` | Native sidecar missing — usually means user didn't install Shruti.app | Tell them to install the app once |
 | `OpenRouter API key required` (during summarize) | No key in settings or env | Run `shruti config set --openrouter-key <key>` |
-| `Smallest auth error` (during stop) | No Smallest AI key set | Run `shruti config set --smallest-key sk_...` then retry the recording |
+| `Smallest auth error` (during stop) | `--stt smallest` used but no Smallest key set | Run `shruti config set --smallest-key sk_...` and retry, or switch to Groq with `--stt groq` |
+| `Groq STT requires an API key` (during stop) | `--stt groq` used but no Groq key set | Run `shruti config set --groq-key gsk_...` and retry |
 | `system.wav is 44 bytes` (header only) | User on Bluetooth output → SCStream sees no audio | Tell them to switch output to MacBook speakers |
 
 ## Trigger-phrase examples (use to decide when to act)

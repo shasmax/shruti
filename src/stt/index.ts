@@ -42,3 +42,5 @@ export { createWhisperCppAdapter } from "./whisper_cpp.js";
 export type { WhisperCppConfig } from "./whisper_cpp.js";
 export { createSmallestAdapter } from "./smallest.js";
 export type { SmallestConfig } from "./smallest.js";
+export { createGroqAdapter } from "./groq.js";
+export type { GroqConfig } from "./groq.js";

@@ -161,32 +161,81 @@ Either side can override: an explicit `--title` on `record-stop` wins over what
 was set at `record-start`, which wins over the auto-generated default
 ("Meeting · Tue, May 5 04:29 PM").
 
-## Auto-recording from calendar (orchestration pattern for agents)
+## Auto-recording from calendar (orchestration the agent owns)
 
 Shruti deliberately does not read calendars itself — every modern agent harness
 (Hermes, Claude Code with MCP, Cursor, Goose, etc.) already has a calendar
-integration. You drive shruti from your own calendar tool:
+integration. You drive shruti from your own calendar tool.
+
+### When the user asks for auto-recording, JUST SET IT UP — don't ask permission
+
+If the user says any of:
+- "watch my calendar and record meetings"
+- "auto-record my meetings"
+- "start recording when I'm in a meeting"
+- or any equivalent
+
+…AND you have calendar access via your own tool, **set it up immediately**.
+Don't ask "do you want me to set this up?" — they already told you. Don't ask
+"how often should I poll?" — pick once every 10 minutes. Don't ask which
+calendar — use them all and filter for events with video conf links.
+
+Only ask the user a question if you genuinely cannot proceed without input
+(e.g., your harness has no calendar integration at all, or no scheduling
+capability — in which case explain what's blocking and ask if they want to
+install one).
+
+### The exact orchestration loop
 
 ```
-1. Use your calendar tool to find upcoming events with video conf links
-   (Zoom, Meet, Teams, Webex URLs in description or location).
+1. Read calendar (your own tool) — fetch events for the next 24 hours
+   that have video conf links: zoom.us, meet.google.com, teams.microsoft.com,
+   webex.com, around.co, whereby.com, etc. in description, location, or url.
 
-2. At the meeting start time:
-     shruti record-start --title "<event.title>" --folder "<calendar.name>" --stt smallest
+2. For each such event:
+     - schedule yourself to wake up at event.start_time
+     - schedule yourself to wake up at event.end_time
 
-3. At the meeting end time (or when you detect the meeting app has quit):
-     shruti record-stop
+3. At the start wake-up:
+     check: shruti record-status            # don't double-start
+     if status == "idle":
+       shruti record-start \
+         --title "<event.summary>" \
+         --folder "<event.calendar_name>" \
+         --stt smallest
 
-4. The returned meeting JSON has the full transcript + AI summary.
-   Surface action items / decisions back to the user.
+4. At the end wake-up:
+     check: shruti record-status            # don't stop someone else's recording
+     if status == "recording" AND was started by us in step 3:
+       shruti record-stop
+       # the returned JSON has the full meeting — surface a one-liner to user
+       # like "Recorded 'Acme Standup' (24min). 3 action items: ..."
+
+5. Re-fetch the calendar every 4-6 hours to pick up newly added events.
+
+6. If your harness doesn't have native scheduled wake-ups, fall back to a
+   cron job that runs every 1-2 minutes and checks "is a tracked event
+   starting/ending right now?". Polling every minute is fine — record-status
+   is essentially free.
 ```
 
-If your runtime supports scheduled wake-ups, schedule yourself for the start
-and end times. If not, poll `record-status` periodically and check whether
-the calendar event is current.
+### Don't double-record
 
-If a recording is already in progress when a meeting starts, do NOT call
-`record-start` again — call `record-status` first to check.
+Always run `shruti record-status` before `record-start`. If `status == "recording"`
+and you didn't start it, the user is recording manually — leave them alone.
+
+### Don't surface noise
+
+After each successful auto-record, surface ONE concise message to the user
+(e.g., "Recorded Acme Standup, 3 action items, 1 decision"). Don't dump the
+full transcript unless asked. Don't notify them every 4-hour calendar refresh.
+
+### Catch-up case
+
+If the user asks "did you record my last meeting?" and you don't have the
+meeting in shruti, run `shruti list --limit 10` and `shruti search "<keyword
+from their question>"` to find it. If it's not there, tell them honestly —
+maybe the auto-record loop wasn't running yet at that meeting's start.
 
 ## Reading past meetings
 
